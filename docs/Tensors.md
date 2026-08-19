@@ -166,13 +166,38 @@ public static double norm(double[] values)
 
 ---
 
+## **Arithmetic**
+
+Elementwise ops broadcast like NumPy. `matmul` covers 2D, batched 3D, and 4D attention shapes.
+
+```java
+public Tensor add(Tensor other)
+public Tensor subtract(Tensor other)
+public Tensor multiply(Tensor other)
+public Tensor divide(Tensor other)
+public Tensor power(double exponent)
+public Tensor matmul(Tensor other)
+public Tensor permute(int... axes)
+public Tensor reshape(int... newShape)
+public Tensor sum(Integer axis, boolean keepdims)
+public Tensor mean(int axis, boolean keepdims)
+public Tensor relu()
+public Tensor sigmoid()
+public Tensor tanh()
+public Tensor gelu()
+public Tensor softmax(int axis)
+public Tensor gatherClass(int[] targetIndex)
+```
+
+---
+
 ## **Check**
 
 ```java
-Tensor batch = Tensor.zeros(new int[] {32, 1, 28, 28}, false);
-System.out.println(batch.ndim());
-System.out.println(batch.size());
-System.out.println(batch.representation());
+Tensor a = new Tensor(new double[] {2.0, 3.0}, true);
+Tensor b = new Tensor(new double[] {4.0, 5.0}, true);
+Tensor loss = a.multiply(b).add(a).sum();
+loss.backward();
 ```
 
-`ndim()` is `4`, `size()` is `25088`.
+`a.grad` should be `{5, 6}` and `b.grad` should be `{2, 3}`.

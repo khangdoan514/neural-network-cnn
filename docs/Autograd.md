@@ -20,7 +20,7 @@ Reverse mode:
 2. Seed $\frac{\partial L}{\partial L} = 1$ at the scalar loss.
 3. Walk the graph backward; each node applies its local rule and accumulates into parent `.grad` buffers.
 
-Local rules for the elementwise ops in part 2:
+Local rules for the ops used most in a CNN:
 
 | Op | Forward | Backward |
 |----|---------|----------|
@@ -28,7 +28,9 @@ Local rules for the elementwise ops in part 2:
 | Sub | $c = a - b$ | $\dot a = \dot c$, $\dot b = -\dot c$ |
 | Mul | $c = a \cdot b$ | $\dot a = \dot c \cdot b$, $\dot b = \dot c \cdot a$ |
 | Div | $c = a / b$ | $\dot a = \dot c / b$, $\dot b = -\dot c \cdot a / b^{2}$ |
-| Pow | $c = a^{n}$ | $\dot a = \dot c \cdot n a^{n-1}$ |
+| Matmul | $C = AB$ | $\dot A = \dot C B^{\top}$, $\dot B = A^{\top}\dot C$ |
+| ReLU | $y = \max(x,0)$ | $\dot x = \dot y \cdot 1_{x>0}$ |
+| GELU | $y = \mathrm{GELU}(x)$ | closed form of the tanh approximation |
 
 Elementwise ops broadcast operands to a common output shape before applying the rule. Gradients are accumulated back into each parent with the reverse broadcast.
 
@@ -95,9 +97,9 @@ Explanation:
 ## **Check**
 
 ```java
-Tensor a = new Tensor(new double[] {2.0}, true);
-Tensor b = new Tensor(new double[] {3.0}, true);
-a.multiply(b).backward();
+Tensor a = new Tensor(new double[][] {{1.0, 2.0}, {3.0, 4.0}}, true);
+Tensor b = new Tensor(new double[][] {{0.5, 1.0}, {-1.0, 2.0}}, true);
+a.matmul(b).sum().backward();
 ```
 
-`a.grad` is `[3.0]` and `b.grad` is `[2.0]`.
+`a.grad` and `b.grad` match the matmul reverse rules and have the same shapes as `a` and `b`.
