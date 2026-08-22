@@ -10,17 +10,23 @@
 
 ### **1. Chain rule**
 
+How a scalar loss $L$ pushes gradients backward through $y=g(x)$:
+
 $$
 \frac{\partial L}{\partial x} = \frac{\partial L}{\partial y} \frac{\partial y}{\partial x}
 $$
 
 ### **2. Finite differences**
 
+Numerical check against analytic `.grad`:
+
 $$
 \partial_i f(x) \approx \frac{f(x+\varepsilon e_i) - f(x-\varepsilon e_i)}{2\varepsilon}
 $$
 
 ### **3. Convolution**
+
+2D convolution in NCHW layout $(N, C, H, W)$:
 
 $$
 Y[b, c_o, i, j] = \sum_{c_i, u, v} X[b, c_i, i', j'] \cdot W[c_o, c_i, u, v]
@@ -36,17 +42,53 @@ $$
 
 ### **5. Affine map**
 
+Forward pass of every `Linear` module:
+
 $$
 y = xW + b
 $$
 
-### **6. Cross entropy**
+with $x \in \mathbb{R}^{N \times d_{\mathrm{in}}}$, $W \in \mathbb{R}^{d_{\mathrm{in}} \times d_{\mathrm{out}}}$, $b \in \mathbb{R}^{d_{\mathrm{out}}}$.
+
+### **6. Activations**
+
+Elementwise nonlinearities (and softmax over a class axis):
+
+$$
+\mathrm{ReLU}(x) = \max(x, 0)
+$$
+
+$$
+\sigma(x) = \frac{1}{1 + e^{-x}}
+$$
+
+$$
+\tanh x = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+$$
+
+$$
+\mathrm{softmax}(z)_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
+$$
+
+### **7. MSE**
+
+Regression objective:
+
+$$
+L = \frac{1}{N}\sum_i (\hat{y}_i - y_i)^2
+$$
+
+### **8. Cross entropy**
+
+Classification objective from logits:
 
 $$
 L = -\log p_c \quad \text{(class index } c\text{)}
 $$
 
-### **7. Adam**
+### **9. Adam**
+
+Adaptive moments:
 
 $$
 \theta \leftarrow \theta - \eta \frac{\hat{m}}{\sqrt{\hat{v}}+\varepsilon}
@@ -61,9 +103,9 @@ $$
 | 01 | Tensors and ops | `src/Tensor.java` | [docs/Tensors.md](docs/Tensors.md) |
 | 02 | Autograd / chain rule | `src/Tensor.java` (`backward`) | [docs/Autograd.md](docs/Autograd.md) |
 | 03 | Gradient checking | `src/Gradcheck.java` | [docs/Gradcheck.md](docs/Gradcheck.md) |
-| 04 | Conv2d, MaxPool2d, Flatten | `src/Conv2d.java` | [docs/Layers.md](docs/Layers.md) |
-| 05 | Activations | `src/ReLU.java` | [docs/Activations.md](docs/Activations.md) |
-| 06 | Losses | `src/CrossEntropyLoss.java` | [docs/Losses.md](docs/Losses.md) |
+| 04 | Conv2d, MaxPool2d, Flatten | `src/Conv2d.java` · `src/MaxPool2d.java` · `src/Flatten.java` | [docs/Layers.md](docs/Layers.md) |
+| 05 | Activations | `ReLU`, `Tanh`, `Sigmoid`, `Softmax` | [docs/Activations.md](docs/Activations.md) |
+| 06 | Losses | `MSELoss`, `BCEWithLogitsLoss`, `CrossEntropyLoss` | [docs/Losses.md](docs/Losses.md) |
 | 07 | Optimizers | `src/SGD.java`, `src/Adam.java` | [docs/Optimizers.md](docs/Optimizers.md) |
 | 08 | CNN (`Sequential`) | `src/Sequential.java` | [docs/CNN.md](docs/CNN.md) |
 | 09 | Training loop | `src/Training.java` | [docs/Training.md](docs/Training.md) |
@@ -90,37 +132,19 @@ java -cp target/classes examples.TrainMnist
 ### **Minimal Usage**
 
 ```java
-import src.Adam;
 import src.Conv2d;
 import src.CrossEntropyLoss;
-import src.Data;
-import src.Flatten;
-import src.Linear;
 import src.MaxPool2d;
 import src.ReLU;
-import src.Sequential;
-import src.Training;
+import src.Tensor;
 
-Data.ImageBatch batch = Data.makeSyntheticMnist(256, 0);
-Sequential model = new Sequential(
-    new Conv2d(1, 8, 5, 1, 2, true, new java.util.Random(0)),
-    new ReLU(),
-    new MaxPool2d(2),
-    new Flatten(),
-    new Linear(1568, 10)
-);
-Training.trainImages(
-    model,
-    new CrossEntropyLoss(),
-    new Adam(model.parameters(), 0.01),
-    batch.images,
-    batch.labels,
-    10,
-    32,
-    true,
-    2,
-    new java.util.Random(0)
-);
+Conv2d conv = new Conv2d(1, 4, 3, 1, 1, true, null);
+Tensor input = Tensor.randn(new int[] {1, 1, 8, 8}, true, null);
+Tensor features = new ReLU().forward(conv.forward(input));
+Tensor pooled = new MaxPool2d(2).forward(features);
+Tensor logits = new Tensor(new double[][] {{0.1, 0.2, 0.3, 0.0}}, true);
+Tensor loss = new CrossEntropyLoss().forward(logits, new int[] {2});
+loss.backward();
 ```
 
 ---
@@ -130,19 +154,28 @@ Training.trainImages(
 ```text
 neural-network-cnn/
 ├── src/
-│   ├── Tensor.java
-│   ├── Gradcheck.java
-│   ├── Conv2d.java
-│   ├── MaxPool2d.java
-│   ├── Flatten.java
-│   ├── Linear.java
-│   ├── Sequential.java
+│   ├── Tensor.java           # Tensor and autograd ops
+│   ├── Gradcheck.java        # Finite difference checks
+│   ├── Module.java           # Base module and parameter collection
+│   ├── Conv2d.java           # 2D convolution (im2col)
+│   ├── MaxPool2d.java        # Max pooling
+│   ├── Flatten.java          # NCHW to (N, features)
+│   ├── ReLU.java             # Activations
+│   ├── Tanh.java
+│   ├── Sigmoid.java
+│   ├── Softmax.java
+│   ├── MSELoss.java          # Losses
+│   ├── BCEWithLogitsLoss.java
 │   ├── CrossEntropyLoss.java
+│   ├── Linear.java           # Dense layer
+│   ├── Sequential.java       # Module stack
+│   ├── SGD.java              # Optimizers
 │   ├── Adam.java
-│   ├── Training.java
-│   └── Data.java
-├── docs/
-├── examples/
-├── tests/
+│   ├── Training.java         # Minibatch train loop
+│   └── Data.java             # Synthetic MNIST batches
+│
+├── docs/                     # Step-by-step guides
+├── examples/                 # Runnable demos
+├── tests/                    # Unit and learning tests
 └── README.md
 ```
