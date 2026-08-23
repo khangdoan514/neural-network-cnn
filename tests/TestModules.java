@@ -1,6 +1,9 @@
 package tests;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+import src.Adam;
 import src.BCEWithLogitsLoss;
 import src.Conv2d;
 import src.CrossEntropyLoss;
@@ -10,6 +13,7 @@ import src.Linear;
 import src.MaxPool2d;
 import src.MSELoss;
 import src.ReLU;
+import src.SGD;
 import src.Sequential;
 import src.Softmax;
 import src.Tensor;
@@ -80,6 +84,25 @@ public class TestModules {
         Tensor crossEntropy = new CrossEntropyLoss().forward(classLogits, new int[] {2, 0});
         crossEntropy.backward();
         assertTrue(Double.isFinite(crossEntropy.data[0]));
+    }
+
+    @Test
+    void testAdamSteps() {
+        Tensor parameter = new Tensor(new double[] {1.0, 2.0}, true);
+        parameter.grad = new double[] {0.5, -0.25};
+        double[] before = parameter.data.clone();
+        new Adam(List.of(parameter), 0.1).step();
+        assertTrue(Math.abs(parameter.data[0] - before[0]) > 1e-12 || Math.abs(parameter.data[1] - before[1]) > 1e-12);
+    }
+
+    @Test
+    void testSgdWithMomentum() {
+        Tensor parameter = new Tensor(new double[] {1.0, 2.0}, true);
+        parameter.grad = new double[] {0.1, 0.1};
+        SGD optimizer = new SGD(List.of(parameter), 0.01, 0.9, 0.0);
+        double[] before = parameter.data.clone();
+        optimizer.step();
+        assertTrue(Math.abs(parameter.data[0] - before[0]) > 1e-12);
     }
 
     @Test
