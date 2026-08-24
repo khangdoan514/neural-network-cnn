@@ -106,7 +106,7 @@ public class TestModules {
     }
 
     @Test
-    void testLenetForward() {
+    void testSequentialForward() {
         Sequential model = new Sequential(
                 new Conv2d(1, 6, 5, 1, 2, true, null),
                 new ReLU(),
@@ -120,5 +120,14 @@ public class TestModules {
         Tensor output = model.forward(Tensor.ones(new int[] {4, 1, 28, 28}, false));
         assertEquals(4, output.shape[0]);
         assertEquals(10, output.shape[1]);
+        assertTrue(model.parameters().size() >= 6);
+    }
+
+    @Test
+    void testSequentialGradcheck() {
+        Sequential model = new Sequential(new Linear(2, 8), new ReLU(), new Linear(8, 1));
+        Tensor inputTensor = new Tensor(new double[][] {{0.5, -1.0}}, true);
+        Gradcheck.Result result = Gradcheck.checkTensorGradient(tensor -> model.forward(tensor).sum(), inputTensor);
+        assertTrue(result.passed, Double.toString(result.relativeError));
     }
 }
