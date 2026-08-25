@@ -14,9 +14,20 @@ import src.Training;
 
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestLearning {
+    @Test
+    void testSyntheticMnistShape() {
+        Data.ImageBatch batch = Data.makeSyntheticMnist(16, 0);
+        assertEquals(16, batch.images.shape[0]);
+        assertEquals(1, batch.images.shape[1]);
+        assertEquals(28, batch.images.shape[2]);
+        assertEquals(28, batch.images.shape[3]);
+        assertEquals(16, batch.labels.length);
+    }
+
     @Test
     void testSyntheticMnistLearns() {
         Data.ImageBatch batch = Data.makeSyntheticMnist(128, 0);
